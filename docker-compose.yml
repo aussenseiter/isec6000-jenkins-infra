@@ -1,0 +1,68 @@
+# Jenkins CI environment with Docker-in-Docker (DinD)
+# Two services on a private bridge network:
+#   docker  - isolated Docker daemon that performs all image builds
+#   jenkins - Jenkins controller (custom image from ./jenkins) 
+
+services:    
+  # Service: docker (Docker-in-Docker daemon) engine that runs all pipeline builds  
+  docker:
+    # Pinned to the same major version as the host engine (29.x) for reproducible behaviour.
+    image: docker:29-dind
+    # Auto-recover the daemon; To prevent build fail if daemon dies
+    restart: unless-stopped
+    # dockerd must manage cgroups, mounts and network namespaces. The risk is contained
+    # because this container is only reachable from the internal jenkins network.
+    privileged: true    
+    command: --storage-driver overlay2 # fast copy-on-write driver, avoids slow vfs fallback
+    environment:
+      # auto-generate TLS certs, listen on 2376 (TLS) and not unauthenticated plaintext port 2375
+      DOCKER_TLS_CERTDIR: /certs
+    volumes:
+      - jenkins-docker-certs:/certs/client # client certs shared with Jenkins      
+      - jenkins-data:/var/jenkins_home # same path as Jenkins so workspace mounts resolve
+      - docker-cache:/var/lib/docker # persists images and build layer cache
+    networks:
+      - jenkins
+    # No "ports:" on purpose - 2376 is reachable only internal jenkins network.
+
+  # Service: jenkins (Jenkins controller) 
+  # custom image with Docker CLI, runs as non-root user
+  jenkins:
+    build:
+      # Build context is the folder that contains the Dockerfile.
+      context: ./jenkins
+    # Name and tag for the locally built image, matching the pinned base.
+    image: isec6000-jenkins:2.568.3
+    # Keep Jenkins running across crashes and host reboots unless explicitly stopped.
+    restart: unless-stopped
+    # Start DinD first. It does not wait for the daemon to be ready, which is fine because Jenkins only
+    # needs Docker when a pipeline runs.
+    depends_on:
+      - docker 
+    environment:
+      # send Docker command to DinD service over TLS.
+      DOCKER_HOST: tcp://docker:2376
+      # Location of the client certificate, key and CA used for TLS.
+      DOCKER_CERT_PATH: /certs/client
+      # enforce TLS and verify the daemon's cert
+      DOCKER_TLS_VERIFY: "1"
+    ports:
+      # UI on localhost only. 
+      # Agent port 50000 is deliberately not published: no external agents are used
+      - "127.0.0.1:8080:8080"
+    volumes:
+      # Persists all Jenkins configuration, jobs, credentials, plugins and
+      # build history across container rebuilds.
+      - jenkins-data:/var/jenkins_home
+      - jenkins-docker-certs:/certs/client:ro # read-only certs (least privilege)
+    networks:
+      - jenkins
+
+# Private bridge network isolating the CI services from other containers.
+networks:
+  jenkins:
+
+volumes:
+  jenkins-data:          # Jenkins home
+  jenkins-docker-certs:  # TLS certs from DinD
+  docker-cache:          # DinD image and layer storage

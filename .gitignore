@@ -1,0 +1,16 @@
+# environment files
+.env
+*.env
+
+# jenkins
+jenkins_home/
+jenkins-data/
+
+# Logs
+*.log
+
+# OS / editor clutter
+.DS_Store
+Thumbs.db
+.vscode/
+*.swp
