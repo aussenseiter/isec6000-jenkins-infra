@@ -16,7 +16,7 @@ services:
     command: --storage-driver overlay2 # fast copy-on-write driver, avoids slow vfs fallback
     environment:
       # auto-generate TLS certs, listen on 2376 (TLS) and not unauthenticated plaintext port 2375
-      DOCKER_TLS_CERTDIR: /certs
+      DOCKER_TLS_CERTDIR: /certs      
     volumes:
       - jenkins-docker-certs:/certs/client # client certs shared with Jenkins      
       - jenkins-data:/var/jenkins_home # same path as Jenkins so workspace mounts resolve
@@ -46,6 +46,8 @@ services:
       DOCKER_CERT_PATH: /certs/client
       # enforce TLS and verify the daemon's cert
       DOCKER_TLS_VERIFY: "1"
+      # enable Credentials/UseItem permission
+      JAVA_OPTS: "-Dcom.cloudbees.plugins.credentials.UseItemPermission=true"
     ports:
       # UI on localhost only. 
       # Agent port 50000 is deliberately not published: no external agents are used
