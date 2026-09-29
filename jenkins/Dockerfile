@@ -26,8 +26,7 @@ RUN apt-get update && apt-get install -y lsb-release ca-certificates curl && \
 USER jenkins
 
 # Pre-install plugins at build time:
-#   blueocean       - modern pipeline visualisation UI
 #   docker-workflow - Docker steps and "agent { docker { ... } }" in Jenkinsfiles
 #   json-path-api   - JSON parsing library used by other plugins
 # Versions are unpinned for latest compatibility;
-RUN jenkins-plugin-cli --plugins "blueocean docker-workflow json-path-api"
+RUN jenkins-plugin-cli --plugins "docker-workflow json-path-api"
