@@ -10,8 +10,8 @@ services:
     image: docker:29-dind
     # Auto-recover the daemon; To prevent build fail if daemon dies
     restart: unless-stopped
-    # dockerd must manage cgroups, mounts and network namespaces. The risk is contained
-    # because this container is only reachable from the internal jenkins network.
+    # dockerd must manage cgroups, mounts and network namespaces. 
+    # The risk is contained; no published port, TLS-only access, trusted builds only.
     privileged: true    
     command: --storage-driver overlay2 # fast copy-on-write driver, avoids slow vfs fallback
     environment:
